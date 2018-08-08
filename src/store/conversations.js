@@ -1,18 +1,19 @@
-import Vue from 'vue'
 import uuidv4 from 'uuid/v4'
 
 const state = {
-	all: {},
+	all: [],
 	allIds: [],
 	allMsgIds: []
 }
 
 const mutations = {
-	SET_CONVERSATION (state, { conversation }) {
+	SET_CONVERSATION (state, conversation) {
 		const data = conversation.data()
-		state.all = {...state.all, [conversation.id]: { users: data.users, created: data.created, messages: [] }} 
+		state.all = {...state.all, [conversation.id]: { users: data.users, created: data.created, messages: data.messages }}
 
-		state.allIds.push(conversation.id)
+		if (!state.allIds.includes(conversation.id)) {
+			state.allIds.push(conversation.id)
+		}
 	},
 
 	ADD_MESSAGE (state, { conversationId, message }) {
@@ -33,7 +34,7 @@ const actions = {
 		.then(res => console.log('Message sent.'))
 		.catch(err => console.log('Error', err))
 	},
-	
+
 	seed ({ rootState }) {
 		let convoRef = rootState.db.collection('conversations')
 
@@ -55,9 +56,11 @@ const actions = {
 
 	async get ({ commit, rootState }) {
 		let convoRef = rootState.db.collection('conversations')
-		let convos = await convoRef.get()
-
-		convos.forEach(conversation => commit('SET_CONVERSATION', { conversation }))
+		await convoRef.onSnapshot(querySnapshot => {
+			querySnapshot.docChanges.forEach(conversation => {
+				commit('SET_CONVERSATION', conversation.doc)
+			})
+		})
 	}
 }
 
